@@ -1,0 +1,75 @@
+/* Sidebar.css */
+.sidebar {
+  width: 250px;
+  height: 100vh;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-top {
+  padding: 20px;
+  text-align: center;
+}
+
+.sidebar-user-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.sidebar-user-name {
+  margin: 0;
+  color: #333;
+}
+
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  text-decoration: none;
+  color: #333;
+  border-radius: 4px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.sidebar-link:hover {
+  background-color: #ddd;
+}
+
+.sidebar-link.active {
+  background-color: #e3f2fd; /* Light blue background for active state */
+  color: #1976d2; /* Blue text for active state */
+}
+
+.sidebar-bottom {
+  padding: 20px;
+  text-align: center;
+}
+
+.sidebar-logout-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.sidebar-logout-btn:hover {
+  background-color: #c53727;
+}

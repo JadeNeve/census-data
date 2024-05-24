@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,200..800;1,200..800&display=swap');
+
+* {
+  padding: 0;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: "Karla", sans-serif;
+}
+
+body {
+  background: #F8F8F8;
+}
+
+h1 {
+  font-size: 40px;
+  font-weight: 800;
+  text-decoration: 'uppercase';
+  color: #273757;
+}
