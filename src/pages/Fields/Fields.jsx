@@ -1,11 +1,16 @@
 import React from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { Typography, Paper, Container } from '@mui/material';
+import { useElderShip } from '../../contexts/ElderShipContext';
 
 const Fields = () => {
   const { elderId, priestIndex, elderName, prstAdminSortName } = useParams();
   const { state } = useLocation();
-  const { families } = state || {};
+  const { elderShips } = useElderShip();
+
+  const elderShip = elderShips.find(elder => elder.id === elderId);
+  const priest = elderShip?.priests[priestIndex];
+  const families = priest?.families || [];
 
   if (!families || families.length === 0) {
     return <Container><Typography variant="h6">No family data available...</Typography></Container>;

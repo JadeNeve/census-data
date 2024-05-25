@@ -1,20 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const ElderShipContext = createContext();
 
-export const ElderShipProvider = ({ children }) => {
-    const [elderShips, setElderShips] = useState(() => {
-        const storedData = localStorage.getItem('elderShips');
-        return storedData ? JSON.parse(storedData) : [];
-    });
+export const useElderShip = () => useContext(ElderShipContext);
 
-    useEffect(() => {
-        localStorage.setItem('elderShips', JSON.stringify(elderShips));
-    }, [elderShips]);
+export const ElderShipProvider = ({ children }) => {
+    const [elderShips, setElderShips] = useState([]);
 
     const updateElderShip = (updatedElderShip) => {
-        setElderShips((prevElderShips) =>
-            prevElderShips.map((elderShip) =>
+        setElderShips(prevElderShips =>
+            prevElderShips.map(elderShip =>
                 elderShip.id === updatedElderShip.id ? updatedElderShip : elderShip
             )
         );
@@ -25,8 +20,4 @@ export const ElderShipProvider = ({ children }) => {
             {children}
         </ElderShipContext.Provider>
     );
-};
-
-export const useElderShip = () => {
-    return useContext(ElderShipContext);
 };

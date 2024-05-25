@@ -4,9 +4,10 @@ import { Grid, Paper, Typography, CircularProgress, IconButton, Drawer, AppBar, 
 import MenuIcon from '@mui/icons-material/Menu';
 import axios from 'axios';
 import Sidebar from '../../navigation/Sidebar';
+import { useElderShip } from '../../contexts/ElderShipContext';
 
 const Dashboard = () => {
-    const [places, setPlaces] = useState([]);
+    const { elderShips, setElderShips } = useElderShip();
     const [loading, setLoading] = useState(true);
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -14,7 +15,7 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 const response = await axios.get('http://localhost:3001/ElderShip/');
-                setPlaces(response.data);
+                setElderShips(response.data);
                 setLoading(false);
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -22,7 +23,7 @@ const Dashboard = () => {
             }
         };
         fetchData();
-    }, []);
+    }, [setElderShips]);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -90,7 +91,7 @@ const Dashboard = () => {
                 <Toolbar />
                 <Typography variant="h4" style={{ margin: '10px 0', padding: '0 20px' }}>DASHBOARD</Typography>
                 <Grid container spacing={4} style={{ padding: '0 20px' }}>
-                    {places.map((elder, index) => {
+                    {elderShips.map((elder, index) => {
                         const elderName = elder.name.split(',')[0];
                         return (
                             <Grid item xs={12} sm={6} md={4} lg={3} key={index}>

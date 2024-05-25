@@ -1,117 +1,168 @@
 import React, { useState, useEffect } from 'react';
-import SearchInput from '../../components/SearchInput/SearchInput';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText } from '@mui/material';
+import axios from 'axios';
+import { useElderShip } from '../../contexts/ElderShipContext';
 import FilterBySelectionModal from '../../components/Modals/FilterBySelectionModal';
 
-const Search = () => {
-  const [userData, setUserData] = useState({});
-  const [filteredData, setFilteredData] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [visibleItems, setVisibleItems] = useState(20);
+const ITEMS_PER_PAGE = 20;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('https://census-87ed1-default-rtdb.firebaseio.com/1bi9vDH32ROhsu7tjCF1TRSOct9BN9lUXkiCO2d47h38/Sheet1.json');
-        const data = await response.json();
-        setUserData(data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+const Search = () => {
+    const { elderShips, updateElderShip } = useElderShip();
+    const [members, setMembers] = useState([]);
+    const [displayedMembers, setDisplayedMembers] = useState([]);
+    const [filteredMembers, setFilteredMembers] = useState([]);
+    const [selectedMembers, setSelectedMembers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await axios.get('http://localhost:3001/ElderShip');
+                const allMembers = response.data.flatMap(elder =>
+                    elder.priests.flatMap(priest =>
+                        priest.families.flatMap(family => family.members)
+                    )
+                );
+                setMembers(allMembers);
+                setFilteredMembers(allMembers);
+                setDisplayedMembers(allMembers.slice(0, ITEMS_PER_PAGE));
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        const results = members.filter(member =>
+            member.Name1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            member.Surname.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredMembers(results);
+        setDisplayedMembers(results.slice(0, currentPage * ITEMS_PER_PAGE));
+    }, [searchTerm, members, currentPage]);
+
+    const handleSearchChange = (event) => {
+        setSearchTerm(event.target.value);
     };
 
-    fetchData();
-  }, []);
+    const handleSelectMember = (member) => {
+        setSelectedMembers(prevSelected => {
+            const isSelected = prevSelected.some(selected => selected.IDNO === member.IDNO);
+            if (isSelected) {
+                return prevSelected.filter(selected => selected.IDNO !== member.IDNO);
+            } else {
+                return [...prevSelected, member];
+            }
+        });
+    };
 
-  useEffect(() => {
-    const filtered = {};
-    Object.keys(userData).forEach(location => {
-      // Check if userData[location] is an array before filtering
-      if (Array.isArray(userData[location])) {
-        const filteredUsers = userData[location].filter(user =>
-          user.Surname.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        if (filteredUsers.length > 0) {
-          filtered[location] = filteredUsers;
+    const handleCheckboxChange = (event, member) => {
+        event.stopPropagation(); // Prevent ListItem onClick event from firing
+        handleSelectMember(member);
+    };
+
+    const handleOpenModal = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+    };
+
+    const handleSave = async (updatedMembers) => {
+        const newMembers = members.map(member => {
+            const updatedMember = updatedMembers.find(m => m.IDNO === member.IDNO);
+            return updatedMember ? updatedMember : member;
+        });
+        setMembers(newMembers);
+        setFilteredMembers(newMembers);
+        setDisplayedMembers(newMembers.slice(0, currentPage * ITEMS_PER_PAGE));
+        setIsModalOpen(false);
+
+        // Update the server with the new data
+        for (const updatedMember of updatedMembers) {
+            const elder = elderShips.find(elder =>
+                elder.priests.some(priest =>
+                    priest.families.some(family =>
+                        family.members.some(member => member.IDNO === updatedMember.IDNO)
+                    )
+                )
+            );
+
+            if (elder) {
+                const priest = elder.priests.find(priest =>
+                    priest.families.some(family =>
+                        family.members.some(member => member.IDNO === updatedMember.IDNO)
+                    )
+                );
+
+                const family = priest.families.find(family =>
+                    family.members.some(member => member.IDNO === updatedMember.IDNO)
+                );
+
+                family.members = family.members.map(member =>
+                    member.IDNO === updatedMember.IDNO ? updatedMember : member
+                );
+
+                await axios.put(`http://localhost:3001/ElderShip/${elder.id}`, elder);
+                updateElderShip(elder);
+            }
         }
-      }
-    });
-    setFilteredData(filtered);
-  }, [userData, searchTerm]);
-  
+    };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
+    const loadMoreItems = () => {
+        setCurrentPage(prevPage => prevPage + 1);
+    };
 
-  const handleCheckboxChange = (e, user) => {
-    const isChecked = e.target.checked;
-    if (isChecked) {
-      setSelectedItems([...selectedItems, user]);
-    } else {
-      setSelectedItems(selectedItems.filter(item => item.IDNO !== user.IDNO));
-    }
-  };
-
-  const totalSelected = selectedItems.length;
-
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleLoadMore = () => {
-    setVisibleItems(prev => prev + 10);
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div>
-      <h1>User Data List</h1>
-      <p>Total Selected: {totalSelected}</p>
-      <SearchInput onChange={handleSearchChange} />
-      <button onClick={handleOpenModal} disabled={totalSelected === 0} variant="outlined">Edit Members</button>
-
-      {Object.keys(filteredData).map(location => (
-        <div key={location}>
-          <ul>
-            {filteredData[location].slice(0, visibleItems).map(user => (
-              <li key={user.IDNO}>
-                <input
-                  type="checkbox"
-                  checked={selectedItems.includes(user)}
-                  onChange={(e) => handleCheckboxChange(e, user)}
-                />
-                <div>Surname: {user.Surname}</div>
-                <div>Gender: {user.Gender}</div>
-                <div>Age: {user.Age}</div>
-                <div>CenGroup: {user.CenGroup}</div>
-                <div>UID: {user.famidno}</div>
-                <div>prstAdminSortName: {user.prstAdminSortName}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-      {visibleItems < Object.values(filteredData).flat().length && (
-        <button onClick={handleLoadMore}>Load More</button>
-      )}
-      <FilterBySelectionModal
-        open={isModalOpen}
-        handleClose={handleCloseModal}
-        selectedItems={selectedItems}
-      />
-    </div>
-  );
+    return (
+        <Container>
+            <Typography variant="h4" gutterBottom>Search</Typography>
+            <TextField
+                fullWidth
+                label="Search for a member"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                margin="normal"
+            />
+            <List>
+                {displayedMembers.map((member) => {
+                    const isSelected = selectedMembers.some(selected => selected.IDNO === member.IDNO);
+                    return (
+                        <ListItem key={member.IDNO} button onClick={() => handleSelectMember(member)}>
+                            <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(event) => handleCheckboxChange(event, member)}
+                            />
+                            <ListItemText primary={`${member.Name1} ${member.Surname}`} />
+                        </ListItem>
+                    );
+                })}
+            </List>
+            {displayedMembers.length < filteredMembers.length && (
+                <Button onClick={loadMoreItems} variant="contained" color="primary">
+                    Load More
+                </Button>
+            )}
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleOpenModal}
+                disabled={selectedMembers.length === 0}
+            >
+                Edit Selected Members
+            </Button>
+            <FilterBySelectionModal
+                open={isModalOpen}
+                handleClose={handleCloseModal}
+                selectedItems={selectedMembers}
+                updateUserData={handleSave}
+            />
+        </Container>
+    );
 };
 
 export default Search;

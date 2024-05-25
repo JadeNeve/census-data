@@ -4,6 +4,7 @@ import { Button, Typography, Container } from '@mui/material';
 import EditMemberDetailsModal from '../../components/Modals/EditMemberDetailsModal';
 import axios from 'axios';
 import { useElderShip } from '../../contexts/ElderShipContext';
+import usePersistState from '../../hooks/usePersistState';
 
 const FamilyVisitingPoints = () => {
     const { state } = useLocation();
@@ -12,45 +13,67 @@ const FamilyVisitingPoints = () => {
 
     const [selectedMember, setSelectedMember] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [members, setMembers] = useState(family ? family.members : []);
+    const [members, setMembers] = usePersistState(family ? family.members : [], 'members-' + elderId + '-' + priestIndex + '-' + familyIndex); // Use the custom hook
 
     useEffect(() => {
-        if (family) {
-            setMembers(family.members);
+        if (!family) {
+            // Fetch the specific ElderShip if family data is not available
+            axios.get(`http://localhost:3001/ElderShip/${elderId}`)
+                .then(response => {
+                    const elderShip = response.data;
+                    const priest = elderShip.priests[priestIndex];
+                    const familyData = priest.families[familyIndex];
+                    setMembers(familyData.members);
+                })
+                .catch(error => {
+                    console.error('Error fetching family data:', error);
+                });
         }
-        console.log("Updated places in FamilyVisitingPoints:", family, elderId);
-    }, [family]);
+    }, [family, elderId, priestIndex, familyIndex, setMembers]);
 
     const handleModalOpen = (member) => {
         setSelectedMember(member);
         setIsModalOpen(true);
     };
 
-    const handleSave = async (updatedMember) => {
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setSelectedMember(null);
+    };
+
+    const handleSave = (updatedMember) => {
         console.log('Updating member:', updatedMember);
-        try {
-            // Update the member in the state
-            const updatedMembers = members.map((member) =>
-                member.IDNO === updatedMember.IDNO ? updatedMember : member
-            );
-            setMembers(updatedMembers);
 
-            // Fetch the specific ElderShip
-            const response = await axios.get(`http://localhost:3001/ElderShip/${elderId}`);
-            const elderShip = response.data;
+        // Update the member in the state
+        const updatedMembers = members.map((member) =>
+            member.IDNO === updatedMember.IDNO ? updatedMember : member
+        );
+        setMembers(updatedMembers);
 
-            // Update the specific member within the ElderShip's nested structure
-            elderShip.priests[priestIndex].families[familyIndex].members = updatedMembers;
+        // Fetch the specific ElderShip
+        axios.get(`http://localhost:3001/ElderShip/${elderId}`)
+            .then(response => {
+                const elderShip = response.data;
 
-            // Send PUT request to update the entire ElderShip
-            await axios.put(`http://localhost:3001/ElderShip/${elderId}`, elderShip);
-            console.log('Member updated successfully:', updatedMembers);
+                // Update the specific member within the ElderShip's nested structure
+                elderShip.priests[priestIndex].families[familyIndex].members = updatedMembers;
 
-            // Update the global state
-            updateElderShip(elderShip);
-        } catch (error) {
-            console.error('Error updating member:', error);
-        }
+                // Send PUT request to update the entire ElderShip
+                return axios.put(`http://localhost:3001/ElderShip/${elderId}`, elderShip);
+            })
+            .then(response => {
+                const updatedElderShip = response.data;
+                console.log('Member updated successfully:', updatedMembers);
+
+                // Update the global state
+                updateElderShip(updatedElderShip);
+
+                // Close the modal
+                handleModalClose();
+            })
+            .catch(error => {
+                console.error('Error updating member:', error);
+            });
     };
 
     if (!family) {
@@ -72,7 +95,7 @@ const FamilyVisitingPoints = () => {
             
             <EditMemberDetailsModal
                 open={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={handleModalClose}
                 memberData={selectedMember}
                 onSave={handleSave}
             />
